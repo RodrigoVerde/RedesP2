@@ -34,6 +34,8 @@ def process_ethMsg_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac
 			-srcMac: MAC origen de la trama Ethernet que se ha recibido
 		Retorno: Ninguno
 	'''
+	logging.debug("Paquete ethmsg recibido y procesado")
+	
 	#Obtenemos la longitud del mensaje (Como es ethernet basico, los datos tienen que ser al menos 60 bytes)
 	length = int.from_bytes(data[0:2], 'big')
 	
@@ -45,7 +47,6 @@ def process_ethMsg_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac
 	msg = ''.join(chr(b) for b in data[2:2+length])
 	macStr = "{:02}:{:02}:{:02}:{:02}:{:02}:{:02}".format(srcMac[0],srcMac[1],srcMac[2],srcMac[3],srcMac[4],srcMac[5])
 	print("[" + str(header.ts.tv_sec + (header.ts.tv_usec/1000000)) + "] " + macStr + ": " + msg)
-	print(">>")
 
 def initEthMsg(interface:str) -> int:
 	'''

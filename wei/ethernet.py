@@ -67,9 +67,7 @@ def process_Ethernet_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes) -> 
 	'''
 	global macAddress, EthernetProtocols
 	
-	#Si obligamos a respetar limites ethernet, descomentar esto
-	#if(header.len < 60 or header.len > 1514):
-		#return
+	logging.debug("Datagrama Ethernet recibido y procesado")
 	
 	dest = data[0:6]
 	origen = data[6:12]
@@ -80,7 +78,7 @@ def process_Ethernet_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes) -> 
 		return
 	
 	#Si no es un protocolo conocido, descartamos
-	if (struct.unpack('!I',ethertype)[0] not in EthernetProtocols):
+	if (struct.unpack('!H',ethertype)[0] not in EthernetProtocols):
 		return 
 	
 	EthernetProtocols[int.from_bytes(ethertype, 'big')](us, header, data[14:], origen)

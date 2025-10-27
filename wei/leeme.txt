@@ -1,0 +1,20 @@
+Autores de la práctica: Rodigo Verde y Wei Wei Zhu
+
+Criterios de evaluación:  
+    -Fichero leeme.txt bien explicado: El presente documento es una prueba de que el fichero leeme.txt se ha hecho.
+	
+    -Recibir tramas Ethernet, realizar comprobaciones y llamar correctamente a la función de callback de nivel superior: Se ha comprobado dicha funcionalidad conectando el programa de la practica a la red "ens33" y esperando a la emisión de ARP requests y observado si nuestro programa respondía (se usaron prints para ver más explicitamente el procesamiento de tramas recibidas). Además, también (conectado a la red "ens33") se realizó una conexión a internet y se observó la recepción y procesamiento (en especifico no procesamiento ya que solo procesamos ethmsg y ARP) de todos los paquetes IP generados por la conexión a internet.
+	
+    -Enviar tramas Ethernet correctamente: Se ha comprobado su funcionalidad por dos medios. Primero, conectandose a la interfaz "lo" (LoopBack) se han enviado paquetes ethernet de ambos tipos (ethmsg y ARP) y se ha observado con Wireshark que se envianban correctamente y bien formados. Segundo, se ha comprobado que se envían correctamente usando la herramienta mininet simulando el caso del enunciado (dos host conectados por ethernet) y enviando paquetes ethmsg y ARP y observado que se reciben y procesan correctamente en el host opuesto.
+	
+    -Imprimir mensajes sobre el protocolo 0x0AA0: Se ha comprobado su funcionalidad por dos medios. Primero, mediante la interfaz "lo" (LoopBack) se han enviado paquetes ethmsg hacia el propio host y se ha comprobado que los mensajes se implimen correctamente. Segundo, con mininet se ha simulado la prueba de ejecución 1 del enuciado de la práctica y se ha comprobado la correctamente recepción y impresión del mensaje contenido en el ethmsg.
+	
+    -Enviar correctamente peticiones ARP: Se ha comprobado su funcionalidad por dos medios. Primero, mediante la interfaz "lo" (LoopBack) se enviaban peticiones ARP y con Wireshark se comprobaba la correctitud de los datagramas enviados. Segundo, con mininet y ejecutando la prueba número 2 que presenta el enunciado, al recibir una respuestas al ARP request se hace implicito la correctitud de las peticiones ARP.
+	
+    -Procesar correctamente peticiones ARP recibidas: Se ha comprobado esta funcionalidad de forma implicita simulando la ejecución de prueba número 2 del enunciado, al enviar un ARP request preguntando por la IP del otro host, si se genera un ARP reply se sobreentiende que la recepción del ARP request fue correcta. Además, para más precisión, se testeo envíando ARP request por cualquier otra IP externa al sistema de dos host de mininet y comprobando que no son respondidas(porque un sistema solo responde a ARP requests de sus IPs).
+	
+    -Enviar correctamente respuestas ARP: Se ha comprobado su funcionalidad simulando la ejecución de prueba número 2 del enunciado y, con Wireshark, comprobando que los ARP reply estan bien formado, además de que el propio programa de la práctica respondia correctamente a la recepción de los ARP replys.
+	
+    -Procesar correctamente respuestas ARP: Se ha comprobado su funcionalidad simulando la ejecución de prueba número 2 del enunciado y observando que el ARP reply se recibía en el host que habia realizado el ARP request e imprimía la MAC correctamente y la guardaba en caché.
+	
+    -Manejo correcto de la caché ARP: Se ha comprobado esta funcionalidad mientras se realizaban las pruebas del resto de puntos anteriores en mininet, ya que para comprobar la correcta funcionalidad de ARP se han recibido multiples ARP replys, los cuales se aprovecharon para ver el guardado de los pares MAC - IP en la caché ARP y como tras un tiempo se borraban automaticamente (se comprobaba el estado de la caché ARP usando el comando p).

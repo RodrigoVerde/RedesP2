@@ -105,6 +105,8 @@ if __name__ == "__main__":
 				ret = ARPGratuito()
 				if (ret is not None):
 					print('Problema, otro host tiene nuestra misma IP')
+				else:
+					print("Todo correcto")
 			else:
 				print("Comando no reconocido. 'h' para ayuda.\n")
 		except KeyboardInterrupt:

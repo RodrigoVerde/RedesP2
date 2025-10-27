@@ -20,6 +20,8 @@ from expiringdict import ExpiringDict
 globalLock =Lock()
 #Dirección de difusión (Broadcast)
 broadcastAddr = bytes([0xFF]*6)
+#Direccion con todos zeros
+zeros = bytes([0x00]*6)
 #Cabecera ARP común a peticiones y respuestas. Específica para la combinación Ethernet/IP
 ARPHeader = bytes([0x00,0x01,0x08,0x00,0x06,0x04])
 #longitud (en bytes) de la cabecera común ARP
@@ -42,7 +44,7 @@ awaitingResponse = False
 #Variable para proteger la caché
 cacheLock = Lock()
 #Caché de ARP. Es un diccionario similar al estándar de Python solo que eliminará las entradas a los 10 segundos
-cache = ExpiringDict(max_len=100, max_age_seconds=1000)
+cache = ExpiringDict(max_len=100, max_age_seconds=5)
 
 #Ethertype de ARP
 ETHERTYPE = int.from_bytes(bytes([0x08,0x06]), 'big')
@@ -99,6 +101,8 @@ def processARPRequest(data:bytes,MAC:bytes)->None:
 	'''
 	global myMAC, myIP
 	
+	logging.debug("ARP request recibido y procesado")
+	
 	#Extraemos todos los datos
 	sendingMac = data[8:14]
 	sendingIp = data[14:18]
@@ -109,12 +113,8 @@ def processARPRequest(data:bytes,MAC:bytes)->None:
 	if (sendingMac != MAC):
 		return
 		
-	#Comprobamos que la MAC del emisor no es la nuestra (no vamos a responder nuestro propio ARP gratuito)
-	if (sendingMac == myMAC):
-		return
-	
-	#Comprobamos si es para nosotros
-	if (receivingMAC != myMAC and receivingMAC != broadcastAddr):
+	#Descartamos si es un ARP gratuito propio
+	if (sendingMac == myMAC and receivingIP == struct.pack('!I', myIP)):
 		return
 	
 	#Comprobamos si preguntan por nuestra IP
@@ -149,6 +149,8 @@ def processARPReply(data:bytes,MAC:bytes)->None:
 		Retorno: Ninguno
 	'''
 	global requestedIP,resolvedMAC,awaitingResponse,cache, myIP, myMAC
+	
+	logging.debug("ARP reply recibido y procesado")
 	
 	#Extraemos todos los datos
 	sendingMac = data[8:14]
@@ -195,7 +197,7 @@ def createARPRequest(ip:int) -> bytes:
 	frame[ARP_HLEN:8] = ARP_REQUEST
 	frame[8:14] = myMAC
 	frame[14:18] = struct.pack('!I', myIP)
-	frame[18:24] = broadcastAddr
+	frame[18:24] = zeros
 	frame[24:28] = ip.to_bytes(4, 'big')
 	
 	return bytes(frame)
@@ -242,6 +244,8 @@ def process_arp_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac:by
 			-srcMac: MAC origen de la trama Ethernet que se ha recibido
 		Retorno: Ninguno
 	'''
+	logging.debug("Paquete ARP recibido y procesado")
+	
 	#Extraemos datos del datagrama ARP
 	dataHeader = data[0:ARP_HLEN]
 	dataOperation = data[ARP_HLEN:8]
@@ -284,13 +288,13 @@ def initARP(interface:str) -> int:
 	#ARP gratuita y comprobacion de IP
 	rst = ARPGratuito()
 	if (rst is not None):
+		print("Error nuestre IP esta duplicada")
 		return -1
 	
 	arpInitialized = True
 	
 	return 0
 
-#TODO: Probablemente haya que quitar el retorno de tipo bytes porque debe poder devolver un None
 def ARPResolution(ip:int) -> bytes:
 	'''
 		Nombre: ARPResolution
@@ -324,15 +328,20 @@ def ARPResolution(ip:int) -> bytes:
 	
 	request = createARPRequest(ip)
 		
-	#TODO: Bucle para enviar 3 intentos
-	rst = sendEthernetFrame(request, len(request), ETHERTYPE, broadcastAddr)
-	if (rst != 0):
-		return None
+	count = 3
+	while (count > 0):
+		rst = sendEthernetFrame(request, len(request), ETHERTYPE, broadcastAddr)
+		if (rst != 0):
+			return None
+			
+		count -= 1
 	
-	#Esperando respuesta
-	with globalLock:
-		if (awaitingResponse is False):
-			return resolvedMAC
+		time.sleep(0.5)
+		
+		#Esperando respuesta
+		with globalLock:
+			if (awaitingResponse is False):
+				return resolvedMAC
 	
 	return None
 
