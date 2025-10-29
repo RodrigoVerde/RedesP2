@@ -44,6 +44,8 @@ REPLY = bytes([0x00, 0x02])
 
 ETHERTYPE = int.from_bytes(bytes([0x08,0x06]), 'big')
 
+arpInitialized = False
+
 
 def getIP(interface:str) -> int:
     '''
@@ -105,18 +107,15 @@ def processARPRequest(data:bytes,MAC:bytes)->None:
 	
     if (originMAC != MAC):
         return
-
-    if (originMAC == myMAC):
-         return
     
 	
     if (destinyMAC != myMAC and destinyMAC != broadcastAddr):
         return
     
-    if (destinyIp != myIP.to_bytes(4, 'big')):
+    if (destinyIp != struct.pack('!I', myIP)):
         return	
 	
-    reply = createARPReply(originIP.to_bytes(4, 'big'), originMAC)
+    reply = createARPReply(struct.unpack('!I', originIP)[0], originMAC)
     sendEthernetFrame(reply, len(reply), ETHERTYPE, bytes(originMAC))
 	
 def processARPReply(data:bytes,MAC:bytes)->None:
@@ -153,19 +152,19 @@ def processARPReply(data:bytes,MAC:bytes)->None:
     if (originMAC != MAC):
           return
 		
-    if (destinyIp != myIP.to_bytes(4, 'big')):
+    if (destinyIp != struct.pack('!I', myIP)):
         return
-    
+
     
     with globalLock:
-        if (originIP != requestedIP.to_bytes(4, 'big')):
+        if (originIP != struct.pack('!I', requestedIP)):
             return
 	
     with globalLock:
         resolvedMAC = originMAC
 
     with cacheLock:
-        cache[originIP.to_bytes(4, 'big')] = originMAC
+        cache[struct.unpack('!I', originIP)[0]] = originMAC
 	
     
     with globalLock:
@@ -188,8 +187,8 @@ def createARPRequest(ip:int) -> bytes:
     frame[0:ARP_HLEN] = ARPHeader
     frame[ARP_HLEN:8] = REQUEST
     frame[8:14] = myMAC
-    frame[14:18] = myIP.to_bytes(4, 'big')
-    frame[18:24] = broadcastAddr
+    frame[14:18] = struct.pack('!I', myIP)
+    frame[18:24] = bytes([0x00]*6)
     frame[24:28] = ip.to_bytes(4, 'big')
 
 
@@ -211,7 +210,7 @@ def createARPReply(IP:int ,MAC:bytes) -> bytes:
     frame[0:ARP_HLEN] = ARPHeader
     frame[ARP_HLEN:8] = REPLY
     frame[8:14] = myMAC
-    frame[14:18] = myIP.to_bytes(4, 'big')
+    frame[14:18] = struct.pack('!I', myIP)
     frame[18:24] = MAC
     frame[24:28] = IP.to_bytes(4, 'big')
 
@@ -239,10 +238,10 @@ def process_arp_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac:by
         Retorno: Ninguno
     '''
 
-    Header = data[0:ARP_HLEN]
+    receivedHeader = data[0:ARP_HLEN]
     Operation = data[ARP_HLEN:8]
 	
-    if (Header != ARPHeader):
+    if (receivedHeader != ARPHeader):
          return
 	
     if (Operation == REPLY):
@@ -273,10 +272,10 @@ def initARP(interface:str) -> int:
     myIP = getIP(interface)
     myMAC = getHwAddr(interface)
 
-    arpGrat1 = ARPResolution(myIP)
+    arpGrat = ARPResolution(myIP)
     time.sleep(0.05)
 
-    if  arpGrat1 is not None:
+    if  arpGrat is not None:
         return -1
     
     arpInitialized = True
@@ -318,7 +317,7 @@ def ARPResolution(ip:int) -> bytes:
         arpReply = sendEthernetFrame(arpRequest, len(arpRequest), ETHERTYPE, broadcastAddr)
         if arpReply != 0:
             return None  
-        time.sleep(0.05)  
+        time.sleep(0.5)  
         
         with globalLock:
             if (awaitingResponse is False):
@@ -329,3 +328,18 @@ def ARPResolution(ip:int) -> bytes:
 	
     
 
+
+def stopARP()->int:
+    '''
+        Nombre: stopARP
+        Descripción: Esta función termina el nivel ARP (elimina su callback del ethernet y pone arpInitialized a false)
+        Retorno: 
+            -1 en caso de error, 0 en otro caso
+    '''
+    global arpInitialized
+    
+    if (arpInitialized is False):
+        return -1
+    
+    arpInitialized = False
+    return removeEthCallback(ETHERTYPE)
