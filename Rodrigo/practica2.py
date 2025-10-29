@@ -24,7 +24,7 @@ def printHelp():
 	print ( "\ta <direccionIP> : Solicita ARP Request sobre la IP indicada\n")
 	print ( "\tp : Imprime cache ARP\n")
 	print ( "\th : Muestra la ayuda\n")
-	#TODO g : ARP gratuito
+	print ( "\tg : Envio de un ARP gratuito\n")
 	print ( "\tq : Salir del programa\n")
 
 
@@ -46,13 +46,12 @@ if __name__ == "__main__":
 		parser.print_help()
 		sys.exit(-1)
 
-	
-	
 	#Inicializamos el nivel Ethernet en la interfaz especificada
 	if (startEthernetLevel(args.interface) != 0):
 		logging.error('Ethernet no inicializado')
 		sys.exit(-1)
 	# TODO iniciar nivel EthMsg
+	initEthMsg(args.interface)
 	#Inicializamos ARP. Si no podemos inicializar salimos.
 	if initARP(args.interface) == -1:
 		logging.error('ARP no inicializado')
@@ -78,7 +77,7 @@ if __name__ == "__main__":
 				printHelp()
 			elif comando.startswith("a "):
 				ipstr = comando.split(" ")[1]
-				print(f"Enviando solicitud ARP a {ipstr}...")
+				print(f"Enviando solicitud ARP a {ipstr} ...")
 			# Aquí Se implementa la solicitud ARP
 				try:
 			#Convertimos la dirección IP en formato textual (X.X.X.X) a un entero de 32 bits.
@@ -100,7 +99,13 @@ if __name__ == "__main__":
 				print(f"Enviando mensaje de {len(mensaje)} Bytes: {mensaje}")
 				# Aquí puedes llamar a una función que maneje el envío de mensajes
 				sendEthMsg(mensaje)
-			#TODO ARP gratuito
+				
+			elif comando == 'g':
+				ret = ARPGratuito()
+				if (ret is not None):
+					print('Problema, otro host tiene nuestra misma IP')
+				else:
+					print("Todo correcto")
 			else:
 				print("Comando no reconocido. 'h' para ayuda.\n")
 		except KeyboardInterrupt:
@@ -108,11 +113,18 @@ if __name__ == "__main__":
 			break
 	logging.info('Cerrando ....')
 	#Paramos nivel ARP
+	if(stopARP() != 0):
+		logging.error('Parando nivel ARP')
+		sys.exit(-1)
 	#Paramos nivel EthMsg
+	if(stopEthMsg() != 0):
+		logging.error('Parando nivel EthMsg')
+		sys.exit(-1)
 	#Paramos el nivel Ethernet
 	if(stopEthernetLevel()!=0):
 		logging.error('Parando nivel Ethernet')
 		sys.exit(-1)
+
 
 
 	
