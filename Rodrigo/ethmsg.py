@@ -40,11 +40,11 @@ def process_ethMsg_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac
 
     msg_length = int.from_bytes(data[0:2], byteorder='big')
 
-    msg = data[2:2+msg_length]
+    msg = data[2:2+msg_length].decode()
 
     mac_str = ':'.join(f'{b:02x}' for b in srcMac)
 
-    print("[" + str(header.ts.tv_sec + (header.ts.tv_usec/1000000)) + "]   {mac_str} :  {msg}")
+    print("[" + str(header.ts.tv_sec + (header.ts.tv_usec/1000000)) + "] " + mac_str + ": " + msg)
 
 
 
@@ -81,12 +81,21 @@ def sendEthMsg(message:bytes) -> bytes:
 
     msg_length = len(message)
 
-    final_message = msg_length.to_bytes(2, byteorder='big') + message 
+    final_message = msg_length.to_bytes(2, byteorder='big') + bytearray(message, "ascii") 
 
     final_length = len(final_message)
 
     sent_bytes = sendEthernetFrame(final_message, final_length, ETHTYPE, broadcast)
 
-    if sent_bytes != 0:
+    if (sent_bytes != 0):
         return None
     return final_length
+
+def stopEthMsg()->int:
+    '''
+        Nombre: stopEthMsg
+        Descripción: Esta función termina el nivel EthMsg (elimina su callback del ethernet)
+        Retorno: 
+            -1 en caso de error, 0 en otro caso
+    '''
+    return removeEthCallback(ETHTYPE)
