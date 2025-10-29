@@ -343,3 +343,15 @@ def stopARP()->int:
     
     arpInitialized = False
     return removeEthCallback(ETHERTYPE)
+
+
+def ARPGratuito() -> bytes:
+	'''
+		Nombre: ARPGratuito
+		Descripción: Esta función envia un ARP grtuito
+		Retorno: 
+			
+	'''
+	global myIP, requestedIP
+	
+	return ARPResolution(myIP)
