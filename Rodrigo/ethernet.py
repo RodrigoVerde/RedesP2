@@ -24,6 +24,8 @@ broadcastAddr = bytes([0xFF]*6)
 #Diccionario que alamacena para un Ethertype dado qué función de callback se debe ejecutar
 EthernetProtocols = {}
 
+levelInitialized = False
+
 def getHwAddr(interface:str):
     '''
         Nombre: getHwAddr
@@ -62,21 +64,19 @@ def process_Ethernet_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes) -> 
         Retorno:
             -Ninguno
     '''
-
+    global macAddress, EthernetProtocols
 
     destino = data[0:6]
     origen =  data[6:12]
     tipo =  data[12:14]
-
-    ethertype = int.from_bytes(tipo, byteorder='big')
-
-
-    if (destino != macAddress or destino != broadcastAddr):
-        return 
-
-    if ethertype in EthernetProtocols:
-        callback_func = EthernetProtocols[ethertype]  
-        callback_func(None, header, data[14:], origen)
+    
+    if (destino != macAddress and destino != broadcastAddr):
+        return
+	
+    if (struct.unpack('!H',tipo)[0] not in EthernetProtocols):
+         return 
+	
+    EthernetProtocols[int.from_bytes(tipo, 'big')](us, header, data[14:], origen)
 
     
 
@@ -177,8 +177,9 @@ def startEthernetLevel(interface:str) -> int:
     recvThread = rxThread()
     recvThread.daemon = True
     recvThread.start()
-
+    
     levelInitialized = True
+
     return 0
 
 def stopEthernetLevel()->int:
@@ -193,6 +194,8 @@ def stopEthernetLevel()->int:
         Argumentos: Ninguno
         Retorno: 0 si todo es correcto y -1 en otro caso
     '''
+    if (levelInitialized is False):
+        return
     recvThread.stop()
 
     pcap_close(handle)
@@ -219,21 +222,39 @@ def sendEthernetFrame(data:bytes,length:int,etherType:int,dstMac:bytes) -> int:
         Retorno: 0 si todo es correcto, -1 en otro caso
     '''
     global macAddress,handle
-
-    if length > ETH_FRAME_MAX:
+    
+    #Control de errores
+    if (length > ETH_FRAME_MAX):
         return -1
-
-
+    
+    #Creamos cabecera
     datos = bytearray()
     datos[0:6] = dstMac
     datos[6:12] = macAddress
     datos[12:14] = etherType.to_bytes(2, 'big')
     
+    #Añadimos datos (asegurando que haya al menos 60 bytes)
     datos[14:len(data)] = data  
     if (len(datos) < ETH_FRAME_MIN):
         datos.extend(b'\x00' * (ETH_FRAME_MIN - len(data)))
 
-
+    #Enviamos trama
     pcap_inject(handle, bytes(datos), len(datos))
+    
+    return 0
+
+def removeEthCallback(ethertype: int) -> int:
+    '''
+        Nombre: removeEthCallback
+        Descripción: Esta función recibirá un valor de ethertype y borrará en la tabla (diccionario) de protocolos de nivel superior el dicha asociación. 
+        Argumentos:
+            -ethertype: valor de Ethernetype para el cuál se quiere borrar una función de callback.
+        Retorno: 0 en ejecucion exitosa, -1 en caso de error
+    '''
+    global EthernetProtocols
+    
+    if ethertype not in EthernetProtocols:
+        return -1
         
+    EthernetProtocols.pop(ethertype)
     return 0
