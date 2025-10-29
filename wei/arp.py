@@ -180,7 +180,6 @@ def processARPReply(data:bytes,MAC:bytes)->None:
 	#Reiniciamos estado
 	with globalLock:
 		awaitingResponse = False
-		requestedIP = None
 
 def createARPRequest(ip:int) -> bytes:
 	'''
@@ -341,6 +340,7 @@ def ARPResolution(ip:int) -> bytes:
 		#Esperando respuesta
 		with globalLock:
 			if (awaitingResponse is False):
+				requestedIP = None
 				return resolvedMAC
 	
 	return None
