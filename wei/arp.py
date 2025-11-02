@@ -23,6 +23,7 @@ broadcastAddr = bytes([0xFF]*6)
 #Direccion con todos zeros
 zeros = bytes([0x00]*6)
 #Cabecera ARP común a peticiones y respuestas. Específica para la combinación Ethernet/IP
+#Type of hardware (2B), Type of protocol (2B), Hardware size (1B), Protocol size (1B)
 ARPHeader = bytes([0x00,0x01,0x08,0x00,0x06,0x04])
 #longitud (en bytes) de la cabecera común ARP
 ARP_HLEN = 6

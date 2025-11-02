@@ -45,8 +45,8 @@ def process_ethMsg_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac
 		
 	#Extraemos e imprimimos mensaje
 	msg = ''.join(chr(b) for b in data[2:2+length])
-	macStr = "{:02}:{:02}:{:02}:{:02}:{:02}:{:02}".format(srcMac[0],srcMac[1],srcMac[2],srcMac[3],srcMac[4],srcMac[5])
-	print("[" + str(header.ts.tv_sec + (header.ts.tv_usec/1000000)) + "] " + macStr + ": " + msg)
+	macStr = f"{srcMac[0]:02X}:{srcMac[1]:02X}:{srcMac[2]:02X}:{srcMac[3]:02X}:{srcMac[4]:02X}:{srcMac[5]:02X}"
+	print("[" + time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(header.ts.tv_sec)) + "." + str(header.ts.tv_usec) + "] " + macStr + " (" + str(length) + " bytes)" + ": " + msg)
 
 def initEthMsg(interface:str) -> int:
 	'''
